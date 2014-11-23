@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 from RPLCD import CharLCD
 import subprocess
+import threading
 
 sw1 = 26
 sw2 = 24
@@ -22,6 +23,8 @@ framebuffer = [
 	''
 ]
 
+fb_pos = [0, 0]
+
 lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
 def write_to_lcd():
@@ -34,9 +37,18 @@ def write_to_lcd():
 	lcd.cursor_pos = (1, 0)
 	lcd.write_string(framebuffer[1].decode('windows-1252').encode('ascii', 'ignore').ljust(16)[:16])
 
+def scroll_lcd():
+	threading.Timer(1, scroll_lcd).start()
+	str = framebuffer[1][fb_pos[1]:fb_pos[1]+16].ljust(16)
+	lcd.cursor_pos = (1, 0)
+	lcd.write_string(str)
+	#if (framebuffer[1].len() > 16):
+	#	fb_pos[1] = (fb_pos[1] + 1) % framebuffer[1].len()
+	
 
 framebuffer[1] = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE).communicate()[0].splitlines()[0]
-write_to_lcd()
+#write_to_lcd()
+scroll_lcd()
 
 while True:
 	if GPIO.event_detected(sw1):
@@ -44,12 +56,15 @@ while True:
 	if GPIO.event_detected(sw2):
 		print "SW2"
 	if GPIO.event_detected(sw3):
-		framebuffer[1] = subprocess.Popen(['mpc', 'prev'], stdout=subprocess.PIPE).communicate()[0].splitlines()[0]
-		write_to_lcd()
+		p = subprocess.Popen(['mpc', 'prev'], stdout=subprocess.PIPE)
+		framebuffer[1] = p.communicate()[0].splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
+		fb_pos[1] = 0
+		#scroll_lcd()
+		#write_to_lcd()
 	if GPIO.event_detected(sw4):
-		framebuffer[1] = subprocess.Popen(['mpc', 'next'], stdout=subprocess.PIPE).communicate()[0].splitlines()[0]
-		write_to_lcd()
-
-
-
+		p = subprocess.Popen(['mpc', 'next'], stdout=subprocess.PIPE)
+		framebuffer[1] = p.communicate()[0].splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
+		fb_pos[1] = 0
+		#scroll_lcd()
+		#write_to_lcd()
 
