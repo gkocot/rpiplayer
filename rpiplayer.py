@@ -27,35 +27,26 @@ fb_pos = 0
 
 lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
-def write_to_lcd():
-	#lcd.home()
-	#for row in framebuffer:
-	#	lcd.write_string(row.ljust(16)[:16])
-	#	lcd.write_string('\r\n')
-	lcd.cursor_pos = (0, 0)
-	lcd.write_string(framebuffer[0].decode('windows-1252').encode('ascii', 'ignore').ljust(16)[:16])
-	lcd.cursor_pos = (1, 0)
-	lcd.write_string(framebuffer[1].decode('windows-1252').encode('ascii', 'ignore').ljust(16)[:16])
+def display():
+	global fb_pos
+	
+	p = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE)
+	current = p.communicate()[0].splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
+	if current != framebuffer[1]:
+		framebuffer[1] = current
+		fb_pos = 0
 
-def scroll_lcd():
-	threading.Timer(1, scroll_lcd).start()
 	lcd.cursor_pos = (1, 0)
 	if (len(framebuffer[1]) > 16):
-		global fb_pos
-		pos1 = fb_pos
-		pos2 = (fb_pos + 16) % len(framebuffer[1])
-		str1 = framebuffer[1][pos1 : pos1 + 16]
-		str2 = framebuffer[1][pos2 : pos2 + 16]
-		str = str1 + ' ' + str2
+		str = framebuffer[1][fb_pos : fb_pos + 16] + ' ' + framebuffer[1][:16]
 		fb_pos = (fb_pos + 1) % len(framebuffer[1])
 	else:
-		str = framebuffer[1].ljust(16)[:16]	
-	lcd.write_string(str[:16])
+		str = framebuffer[1].ljust(16)
 	
+	lcd.write_string(str[:16])	
+	threading.Timer(1, display).start()
 
-framebuffer[1] = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE).communicate()[0].splitlines()[0]
-#write_to_lcd()
-scroll_lcd()
+display()
 
 while True:
 	if GPIO.event_detected(sw1):
@@ -63,15 +54,7 @@ while True:
 	if GPIO.event_detected(sw2):
 		print "SW2"
 	if GPIO.event_detected(sw3):
-		p = subprocess.Popen(['mpc', 'prev'], stdout=subprocess.PIPE)
-		framebuffer[1] = p.communicate()[0].splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
-		fb_pos = 0
-		#scroll_lcd()
-		#write_to_lcd()
+		subprocess.Popen(['mpc', 'prev'], stdout=subprocess.PIPE)
 	if GPIO.event_detected(sw4):
-		p = subprocess.Popen(['mpc', 'next'], stdout=subprocess.PIPE)
-		framebuffer[1] = p.communicate()[0].splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
-		fb_pos = 0
-		#scroll_lcd()
-		#write_to_lcd()
+		subprocess.Popen(['mpc', 'next'], stdout=subprocess.PIPE)
 
