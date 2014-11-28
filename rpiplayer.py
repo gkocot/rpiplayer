@@ -62,6 +62,7 @@ framebuffer[0] = grep2.communicate()[0]
 current_playlist_no=0
 playlists = subprocess.Popen(['mpc', 'lsplaylists'], stdout=subprocess.PIPE).communicate()[0].splitlines()
 random=False
+subprocess.Popen(['mpc', 'random', 'off']).wait()
 
 display()
 
@@ -75,12 +76,9 @@ while True:
 	if GPIO.event_detected(sw2):
 		current_playlist_no = (current_playlist_no + 1) % len(playlists)
 		framebuffer[0] = playlists[current_playlist_no]
-		p0 = subprocess.Popen(['mpc', 'clear'])
-		p0.wait()
-		p1 = subprocess.Popen(['mpc', 'load', playlists[current_playlist_no]])
-		p1.wait()
-		p2 = subprocess.Popen(['mpc', 'play', '1'])
-		p2.wait()
+		subprocess.Popen(['mpc', 'clear']).wait()
+		subprocess.Popen(['mpc', 'load', playlists[current_playlist_no]]).wait()
+		subprocess.Popen(['mpc', 'play', '1']).wait()
 	if GPIO.event_detected(sw3):
 		subprocess.Popen(['mpc', 'prev'])
 	if GPIO.event_detected(sw4):
