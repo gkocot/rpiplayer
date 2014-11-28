@@ -9,6 +9,7 @@ sw3 = 23
 sw4 = 22
 #led = 21
 
+GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 #GPIO.setup(led, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup([sw1, sw2, sw3, sw4], GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -35,7 +36,11 @@ def display():
 	if current != framebuffer[1]:
 		framebuffer[1] = current
 		fb_pos = 0
-
+		
+	lcd.cursor_pos = (0, 0)
+	str = framebuffer[0][:15].ljust(15) + ('*' if random else ' ')
+	lcd.write_string(str)
+	
 	lcd.cursor_pos = (1, 0)
 	if (len(framebuffer[1]) > 16):
 		str = framebuffer[1][fb_pos : fb_pos + 16] + ' ' + framebuffer[1][:16]
@@ -46,24 +51,38 @@ def display():
 	lcd.write_string(str[:16])
 	threading.Timer(1, display).start()
 
+# Display IP address in the 1st line.
 ip = subprocess.Popen(['ip', 'addr'], stdout=subprocess.PIPE)
 grep1 = subprocess.Popen(['grep', 'inet.*brd', '-o'], stdout=subprocess.PIPE, stdin=ip.stdout)
 grep2 = subprocess.Popen(['grep', '-E', '([0-9]{1,3}\.){3}[0-9]{1,3}', '-o'], stdout=subprocess.PIPE, stdin=grep1.stdout)
 ip.stdout.close()
 grep1.stdout.close()
 framebuffer[0] = grep2.communicate()[0]
-lcd.cursor_pos = (0, 0)
-lcd.write_string(framebuffer[0][:16])
+
+current_playlist_no=0
+playlists = subprocess.Popen(['mpc', 'lsplaylists'], stdout=subprocess.PIPE).communicate()[0].splitlines()
+random=False
 
 display()
 
 while True:
 	if GPIO.event_detected(sw1):
-		print "SW1"
+		random = not random
+		if random:
+			subprocess.Popen(['mpc', 'random', 'on'])
+		else:
+			subprocess.Popen(['mpc', 'random', 'off'])
 	if GPIO.event_detected(sw2):
-		print "SW2"
+		current_playlist_no = (current_playlist_no + 1) % len(playlists)
+		framebuffer[0] = playlists[current_playlist_no]
+		p0 = subprocess.Popen(['mpc', 'clear'])
+		p0.wait()
+		p1 = subprocess.Popen(['mpc', 'load', playlists[current_playlist_no]])
+		p1.wait()
+		p2 = subprocess.Popen(['mpc', 'play', '1'])
+		p2.wait()
 	if GPIO.event_detected(sw3):
-		subprocess.Popen(['mpc', 'prev'], stdout=subprocess.PIPE)
+		subprocess.Popen(['mpc', 'prev'])
 	if GPIO.event_detected(sw4):
-		subprocess.Popen(['mpc', 'next'], stdout=subprocess.PIPE)
+		subprocess.Popen(['mpc', 'next'])
 
