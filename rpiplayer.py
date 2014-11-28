@@ -43,8 +43,17 @@ def display():
 	else:
 		str = framebuffer[1].ljust(16)
 	
-	lcd.write_string(str[:16])	
+	lcd.write_string(str[:16])
 	threading.Timer(1, display).start()
+
+ip = subprocess.Popen(['ip', 'addr'], stdout=subprocess.PIPE)
+grep1 = subprocess.Popen(['grep', 'inet.*brd', '-o'], stdout=subprocess.PIPE, stdin=ip.stdout)
+grep2 = subprocess.Popen(['grep', '-E', '([0-9]{1,3}\.){3}[0-9]{1,3}', '-o'], stdout=subprocess.PIPE, stdin=grep1.stdout)
+ip.stdout.close()
+grep1.stdout.close()
+framebuffer[0] = grep2.communicate()[0]
+lcd.cursor_pos = (0, 0)
+lcd.write_string(framebuffer[0][:16])
 
 display()
 
