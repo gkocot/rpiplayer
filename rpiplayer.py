@@ -29,6 +29,7 @@ fb_pos = 0
 lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
 def display():
+	threading.Timer(1, display).start()
 	global fb_pos
 	
 	p = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE)
@@ -48,8 +49,7 @@ def display():
 	else:
 		str = framebuffer[1].ljust(16)
 	
-	lcd.write_string(str[:16])
-	threading.Timer(1, display).start()
+	lcd.write_string(str[:16])	
 
 # Display IP address in the 1st line.
 ip = subprocess.Popen(['ip', 'addr'], stdout=subprocess.PIPE)
@@ -70,9 +70,9 @@ while True:
 	if GPIO.event_detected(sw1):
 		random = not random
 		if random:
-			subprocess.Popen(['mpc', 'random', 'on'])
+			subprocess.Popen(['mpc', 'random', 'on']).wait()
 		else:
-			subprocess.Popen(['mpc', 'random', 'off'])
+			subprocess.Popen(['mpc', 'random', 'off']).wait()
 	if GPIO.event_detected(sw2):
 		current_playlist_no = (current_playlist_no + 1) % len(playlists)
 		framebuffer[0] = playlists[current_playlist_no]
@@ -80,7 +80,7 @@ while True:
 		subprocess.Popen(['mpc', 'load', playlists[current_playlist_no]]).wait()
 		subprocess.Popen(['mpc', 'play', '1']).wait()
 	if GPIO.event_detected(sw3):
-		subprocess.Popen(['mpc', 'prev'])
+		subprocess.Popen(['mpc', 'prev']).wait()
 	if GPIO.event_detected(sw4):
-		subprocess.Popen(['mpc', 'next'])
+		subprocess.Popen(['mpc', 'next']).wait()
 
