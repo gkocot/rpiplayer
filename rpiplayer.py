@@ -24,7 +24,7 @@ framebuffer = [
 	''
 ]
 
-fb_pos = 0
+fb_pos = 1
 
 lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
@@ -38,23 +38,24 @@ def display():
 	global fb_pos
 	p = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE)
 	current = p.communicate()[0]
-	if not current:
-		# Nothing is playing.
-		return
-	else:
+	if current:
 		current = current.splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
+	else:
+		current = ''
+	# TBD: Is None == ''?
+	
 	if current != framebuffer[1]:
 		framebuffer[1] = current
-		fb_pos = 0
+		fb_pos = 1
 
 	lcd.cursor_pos = (1, 0)
 	if (len(framebuffer[1]) > 16):
-		str = framebuffer[1][fb_pos : fb_pos + 16] + ' ' + framebuffer[1][:16]
-		fb_pos = (fb_pos + 1) % len(framebuffer[1])
+		str = (' ' + framebuffer[1])[fb_pos : fb_pos + 16] + (' ' + framebuffer[1][:16])
+		fb_pos = (fb_pos + 1) % (len(framebuffer[1]) + 1)
 	else:
 		str = framebuffer[1].ljust(16)
 	
-	lcd.write_string(str[:16])	
+	lcd.write_string(str[:16])
 
 def get_ip_addr():
 	ip = subprocess.Popen(['ip', 'addr'], stdout=subprocess.PIPE)
