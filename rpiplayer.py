@@ -4,10 +4,10 @@ import subprocess
 import threading
 import time
 
-sw1 = 26
-sw2 = 24
-sw3 = 23
-sw4 = 22
+sw1 = 22 # RANDOM
+sw2 = 23 # PLAYLIST
+sw3 = 26 # NEXT
+sw4 = 24 # PREV
 #led = 21
 
 GPIO.setwarnings(False)
