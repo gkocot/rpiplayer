@@ -10,15 +10,88 @@ sw3 = 26 # NEXT
 sw4 = 24 # PREV
 #led = 21
 
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BOARD)
-#GPIO.setup(led, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup([sw1, sw2, sw3, sw4], GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(sw1, GPIO.FALLING, bouncetime=200)
-GPIO.add_event_detect(sw2, GPIO.FALLING, bouncetime=200)
-GPIO.add_event_detect(sw3, GPIO.FALLING, bouncetime=200)
-GPIO.add_event_detect(sw4, GPIO.FALLING, bouncetime=200)
 #GPIO.output(led, GPIO.HIGH)
+
+class KeyState(object):
+	UP = 0
+	DOWN = 1
+	HOLD = 2
+
+
+class KeyStruct(object):
+	def __init__(self, id):
+		self.id = id
+		self.state = KeyState.UP
+		self.time = 0
+
+
+class Keyboard(object):
+	def __init__(self):
+		GPIO.setwarnings(False)
+		GPIO.setmode(GPIO.BOARD)
+		#GPIO.setup(led, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)
+		GPIO.setup([sw1, sw2, sw3, sw4], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		#GPIO.add_event_detect(sw1, GPIO.BOTH, bouncetime=50)
+		#GPIO.add_event_detect(sw2, GPIO.BOTH, bouncetime=50)
+		#GPIO.add_event_detect(sw3, GPIO.BOTH, bouncetime=50)
+		#GPIO.add_event_detect(sw4, GPIO.BOTH, bouncetime=50)
+		
+		self.keys = [KeyStruct(sw1), KeyStruct(sw2), KeyStruct(sw3), KeyStruct(sw4)]
+
+	def process_keys(self):
+		for i in range(len(self.keys)):
+			id = self.keys[i].id
+			state = self.keys[i].state
+			
+			if state == KeyState.UP:
+				if not GPIO.input(id):
+					self.keys[i].time = time.time()
+					self.keys[i].state = KeyState.DOWN
+					self.key_down(id)
+			elif state == KeyState.DOWN:
+				if GPIO.input(id):
+					self.keys[i].state = KeyState.UP
+					self.key_up(id)
+					self.key_pressed(id)
+				else:
+					dt = time.time() - self.keys[i].time
+					if dt > 3:
+						self.keys[i].state = KeyState.HOLD
+						self.key_hold(id)
+					
+			elif state == KeyState.HOLD:
+				if GPIO.input(id):
+					self.keys[i].state = KeyState.UP
+					self.key_up(id)
+			 
+	def key_down(self, id):
+		print '{0} key down'.format(id)
+
+	def key_up(self, id):
+		print '{0} key up'.format(id)
+
+	def key_pressed(self, id):
+		print '{0} key pressed'.format(id)
+		
+	def key_hold(self, id):
+		print '{0} key held'.format(id)
+
+"""			
+		if GPIO.event_detected(sw1):
+			print 'sw1={0}'.format(GPIO.input(sw1))
+		if GPIO.event_detected(sw2):
+			print 'sw2'
+		if GPIO.event_detected(sw3):
+			print 'sw3'
+		if GPIO.event_detected(sw4):
+			print 'sw4'
+"""
+
+k = Keyboard()
+while True:
+	k.process_keys()
+
+		
 lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
 fb = ['', '']
