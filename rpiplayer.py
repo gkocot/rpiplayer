@@ -36,6 +36,21 @@ class MPD(object):
 			subprocess.Popen(['mpc', 'play', '1']).wait()
 			#fb[0] = playlists[current_playlist_no][:15].ljust(15) + ('*' if random else ' ')
 
+	@staticmethod
+	def get_current_playlist_name():
+		return MPD.playlists[MPD.current_playlist_no]
+
+	@staticmethod
+	def get_current_stream_name():
+		p = subprocess.Popen(['mpc', 'current'], stdout=subprocess.PIPE)
+		current = p.communicate()[0]
+		if current:
+			current = current.splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
+		return current
+
+
+MPD.init()
+
 
 class KeyState(object):
 	UP = 0
@@ -62,6 +77,8 @@ class Keyboard(object):
 		KeyStruct(sw3),
 		KeyStruct(sw4)
 	]
+	
+	KEY_HOLD_TIME = 2
 
 	@staticmethod
 	def init():
@@ -71,7 +88,6 @@ class Keyboard(object):
 		GPIO.setup(Keyboard.sw2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		GPIO.setup(Keyboard.sw3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		GPIO.setup(Keyboard.sw4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-		
 
 	@staticmethod
 	def process_keys():
@@ -91,7 +107,7 @@ class Keyboard(object):
 					Keyboard.key_pressed(id)
 				else:
 					dt = time.time() - Keyboard.keys[i].time
-					if dt > 3:
+					if dt > Keyboard.KEY_HOLD_TIME:
 						Keyboard.keys[i].state = KeyState.HOLD
 						Keyboard.key_hold(id)
 					
@@ -137,24 +153,10 @@ class LCD(object):
 		LCD.lcd.write_string(string.ljust(LCD.COLS)[:LCD.COLS])
 
 
-class Label(object):
-	def __init__(self, text):
-		self.text = text
-		
-	def get_text(self):
-		return self.text
-
-	def on_key_pressed(self, id):
-		pass
-	
-	def refresh(self):
-		pass
-
-
 class Screen(object):
-	def __init__(self, text):
-		self.text = text
-		
+	def get_text(self, row):
+		pass
+
 	def open(self):
 		pass
 	
@@ -169,12 +171,62 @@ class Screen(object):
 	
 	def refresh(self):
 		pass
+
+
+class StaticScreen(Screen):
+	def __init__(self, text):
+		self.text = text
+		
+	def get_text(self, row):
+		return self.text[row]
+
+
+class PlayerScreen(Screen):
+	def __init__(self):
+		self.open()
+
+	def get_text(self, row):
+		if row == 0:
+			str = MPD.get_current_playlist_name()
+		else:
+			str = MPD.get_current_stream_name()
+
+		if (len(str) > LCD.COLS):
+			return ' '.join([str, str])[self.pos[row]:self.pos[row] + LCD.COLS]
+		else:
+			return str.ljust(LCD.COLS)
+
+	def open(self):
+		self.pos = [0, 0]
+		self.time = time.time()
 	
+	def key_hold(self, id):
+		if id == Keyboard.sw1:
+			LCD.write(0, 0, 'Power OFF'.ljust(LCD.COLS))
+			LCD.write(1, 0, ' ' * LCD.COLS)
+			GPIO.cleanup()
+			subprocess.Popen(['poweroff']).wait()
+
+	def key_pressed(self, id):
+		if id == Keyboard.sw2:
+			MPD.next_playlist()
+		elif id == Keyboard.sw3:
+			MPD.prev()
+		elif id == Keyboard.sw4:
+			MPD.next()
+		self.open()
+	
+	def refresh(self):
+		if time.time() - self.time > 0.8:
+			self.pos[0] = (self.pos[0] + 1) % (len(MPD.get_current_playlist_name()) + 1)
+			self.pos[1] = (self.pos[1] + 1) % (len(MPD.get_current_stream_name()) + 1)
+			self.time = time.time()
+
 
 class DispMgr(object):
 	screen = [
-		Screen(["RPi Player", "Version 0.1"]),
-		Screen(["Screen 2", "Test"])
+		PlayerScreen(),
+		StaticScreen(["RPi Player", "Version 0.1"]),
 	]
 
 	current_screen = 0
@@ -182,8 +234,8 @@ class DispMgr(object):
 	@staticmethod
 	def refresh():
 		DispMgr.screen[DispMgr.current_screen].refresh()
-		LCD.write(0, 0, DispMgr.screen[DispMgr.current_screen].text[0])
-		LCD.write(1, 0, DispMgr.screen[DispMgr.current_screen].text[1])
+		LCD.write(0, 0, DispMgr.screen[DispMgr.current_screen].get_text(0))
+		LCD.write(1, 0, DispMgr.screen[DispMgr.current_screen].get_text(1))
 		
 	@staticmethod
 	def key_hold(id):		
@@ -197,22 +249,64 @@ class DispMgr(object):
 	@staticmethod
 	def key_pressed(id):
 		DispMgr.screen[DispMgr.current_screen].key_pressed(id)
-		"""
-		if id == Keyboard.sw2:
-			MPD.next_playlist()
-		elif id == Keyboard.sw3:
-			MPD.prev()
-		elif id == Keyboard.sw4:
-			MPD.next()
-		"""
 
 
 LCD.clear()
-MPD.init()
 Keyboard.init()
 while True:
 	Keyboard.process_keys()
 	DispMgr.refresh()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 fb = ['', '']
