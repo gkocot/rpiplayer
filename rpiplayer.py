@@ -5,7 +5,7 @@ import threading
 import time
 
 
-class MPD:
+class MPD(object):
 	playlists = []
 	current_playlist_no = 0
 
@@ -113,37 +113,106 @@ class Keyboard(object):
 	@staticmethod
 	def key_pressed(id):
 		#print '{0} key pressed'.format(id)
+		DispMgr.key_pressed(id)
+
+	@staticmethod
+	def key_hold(id):
+		#print '{0} key held'.format(id)
+		DispMgr.key_hold(id)
+
+
+class LCD(object):
+	ROWS = 2
+	COLS = 16
+	lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=COLS, rows=ROWS)
+
+	@staticmethod
+	def clear():
+		for row in range(0, LCD.ROWS):
+			LCD.write(row, 0, ' ' * LCD.COLS)
+	
+	@staticmethod
+	def write(row, col, string):
+		LCD.lcd.cursor_pos = (row, col)
+		LCD.lcd.write_string(string.ljust(LCD.COLS)[:LCD.COLS])
+
+
+class Label(object):
+	def __init__(self, text):
+		self.text = text
+		
+	def get_text(self):
+		return self.text
+
+	def on_key_pressed(self, id):
+		pass
+	
+	def refresh(self):
+		pass
+
+
+class Screen(object):
+	def __init__(self, text):
+		self.text = text
+		
+	def open(self):
+		pass
+	
+	def close(self):
+		pass
+	
+	def key_hold(self, id):
+		pass
+	
+	def key_pressed(self, id):
+		pass
+	
+	def refresh(self):
+		pass
+	
+
+class DispMgr(object):
+	screen = [
+		Screen(["RPi Player", "Version 0.1"]),
+		Screen(["Screen 2", "Test"])
+	]
+
+	current_screen = 0
+
+	@staticmethod
+	def refresh():
+		DispMgr.screen[DispMgr.current_screen].refresh()
+		LCD.write(0, 0, DispMgr.screen[DispMgr.current_screen].text[0])
+		LCD.write(1, 0, DispMgr.screen[DispMgr.current_screen].text[1])
+		
+	@staticmethod
+	def key_hold(id):		
+		if id == Keyboard.sw3:
+			DispMgr.screen[DispMgr.current_screen].close()
+			DispMgr.current_screen = (DispMgr.current_screen + 1) % len(DispMgr.screen)
+			DispMgr.screen[DispMgr.current_screen].open()
+		else:
+			DispMgr.screen[DispMgr.current_screen].key_hold(id)
+			
+	@staticmethod
+	def key_pressed(id):
+		DispMgr.screen[DispMgr.current_screen].key_pressed(id)
+		"""
 		if id == Keyboard.sw2:
 			MPD.next_playlist()
 		elif id == Keyboard.sw3:
 			MPD.prev()
 		elif id == Keyboard.sw4:
 			MPD.next()
+		"""
 
-	@staticmethod
-	def key_hold(id):
-		#print '{0} key held'.format(id)
-		if id == Keyboard.sw1:
-			GPIO.cleanup()
-			subprocess.Popen(['poweroff']).wait()
 
-"""			
-		if GPIO.event_detected(sw1):
-			print 'sw1={0}'.format(GPIO.input(sw1))
-		if GPIO.event_detected(sw2):
-			print 'sw2'
-		if GPIO.event_detected(sw3):
-			print 'sw3'
-		if GPIO.event_detected(sw4):
-			print 'sw4'
-"""
-
-#lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
-
+LCD.clear()
 MPD.init()
 Keyboard.init()
 while True:
 	Keyboard.process_keys()
+	DispMgr.refresh()
 
 
 fb = ['', '']
