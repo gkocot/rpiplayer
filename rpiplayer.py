@@ -4,13 +4,38 @@ import subprocess
 import threading
 import time
 
-sw1 = 22 # RANDOM
-sw2 = 23 # PLAYLIST
-sw3 = 26 # NEXT
-sw4 = 24 # PREV
-#led = 21
 
-#GPIO.output(led, GPIO.HIGH)
+class MPD:
+	playlists = []
+	current_playlist_no = 0
+
+	@staticmethod
+	def init():
+		MPD.playlists = subprocess.Popen(['mpc', 'lsplaylists'], stdout=subprocess.PIPE).communicate()[0].splitlines()
+		subprocess.Popen(['mpc', 'clear']).wait()
+		subprocess.Popen(['mpc', 'load', 'RADIO']).wait()
+		subprocess.Popen(['mpc', 'random', 'off']).wait()
+		subprocess.Popen(['mpc', 'repeat', 'on']).wait()
+		subprocess.Popen(['mpc', 'volume', '100']).wait()
+		subprocess.Popen(['mpc', 'play', '1']).wait()
+		MPD.current_playlist_no = MPD.playlists.index('RADIO')
+
+	@staticmethod
+	def prev():
+		subprocess.Popen(['mpc', 'prev']).wait()
+
+	@staticmethod
+	def next():
+		subprocess.Popen(['mpc', 'next']).wait()
+
+	@staticmethod
+	def next_playlist():
+			MPD.current_playlist_no = (MPD.current_playlist_no + 1) % len(MPD.playlists)
+			subprocess.Popen(['mpc', 'clear']).wait()
+			subprocess.Popen(['mpc', 'load', MPD.playlists[MPD.current_playlist_no]]).wait()
+			subprocess.Popen(['mpc', 'play', '1']).wait()
+			#fb[0] = playlists[current_playlist_no][:15].ljust(15) + ('*' if random else ' ')
+
 
 class KeyState(object):
 	UP = 0
@@ -26,55 +51,81 @@ class KeyStruct(object):
 
 
 class Keyboard(object):
-	def __init__(self):
+	sw1 = 22 # RANDOM
+	sw2 = 23 # PLAYLIST
+	sw3 = 26 # NEXT
+	sw4 = 24 # PREV
+
+	keys = [
+		KeyStruct(sw1),
+		KeyStruct(sw2),
+		KeyStruct(sw3),
+		KeyStruct(sw4)
+	]
+
+	@staticmethod
+	def init():
 		GPIO.setwarnings(False)
 		GPIO.setmode(GPIO.BOARD)
-		#GPIO.setup(led, GPIO.OUT, pull_up_down=GPIO.PUD_DOWN)
-		GPIO.setup([sw1, sw2, sw3, sw4], GPIO.IN, pull_up_down=GPIO.PUD_UP)
-		#GPIO.add_event_detect(sw1, GPIO.BOTH, bouncetime=50)
-		#GPIO.add_event_detect(sw2, GPIO.BOTH, bouncetime=50)
-		#GPIO.add_event_detect(sw3, GPIO.BOTH, bouncetime=50)
-		#GPIO.add_event_detect(sw4, GPIO.BOTH, bouncetime=50)
+		GPIO.setup(Keyboard.sw1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(Keyboard.sw2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(Keyboard.sw3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(Keyboard.sw4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		
-		self.keys = [KeyStruct(sw1), KeyStruct(sw2), KeyStruct(sw3), KeyStruct(sw4)]
 
-	def process_keys(self):
-		for i in range(len(self.keys)):
-			id = self.keys[i].id
-			state = self.keys[i].state
+	@staticmethod
+	def process_keys():
+		for i in range(len(Keyboard.keys)):
+			id = Keyboard.keys[i].id
+			state = Keyboard.keys[i].state
 			
 			if state == KeyState.UP:
 				if not GPIO.input(id):
-					self.keys[i].time = time.time()
-					self.keys[i].state = KeyState.DOWN
-					self.key_down(id)
+					Keyboard.keys[i].time = time.time()
+					Keyboard.keys[i].state = KeyState.DOWN
+					Keyboard.key_down(id)
 			elif state == KeyState.DOWN:
 				if GPIO.input(id):
-					self.keys[i].state = KeyState.UP
-					self.key_up(id)
-					self.key_pressed(id)
+					Keyboard.keys[i].state = KeyState.UP
+					Keyboard.key_up(id)
+					Keyboard.key_pressed(id)
 				else:
-					dt = time.time() - self.keys[i].time
+					dt = time.time() - Keyboard.keys[i].time
 					if dt > 3:
-						self.keys[i].state = KeyState.HOLD
-						self.key_hold(id)
+						Keyboard.keys[i].state = KeyState.HOLD
+						Keyboard.key_hold(id)
 					
 			elif state == KeyState.HOLD:
 				if GPIO.input(id):
-					self.keys[i].state = KeyState.UP
-					self.key_up(id)
-			 
-	def key_down(self, id):
-		print '{0} key down'.format(id)
+					Keyboard.keys[i].state = KeyState.UP
+					Keyboard.key_up(id)
+			
+	@staticmethod
+	def key_down(id):
+		#print '{0} key down'.format(id)
+		pass
 
-	def key_up(self, id):
-		print '{0} key up'.format(id)
+	@staticmethod
+	def key_up(id):
+		#print '{0} key up'.format(id)
+		pass
 
-	def key_pressed(self, id):
-		print '{0} key pressed'.format(id)
-		
-	def key_hold(self, id):
-		print '{0} key held'.format(id)
+	@staticmethod
+	def key_pressed(id):
+		#print '{0} key pressed'.format(id)
+		if id == Keyboard.sw2:
+			MPD.next_playlist()
+		elif id == Keyboard.sw3:
+			MPD.prev()
+		elif id == Keyboard.sw4:
+			MPD.next()
+
+	@staticmethod
+	def key_hold(id):
+		#print '{0} key held'.format(id)
+		if id == Keyboard.sw1:
+			GPIO.cleanup()
+			subprocess.Popen(['poweroff']).wait()
 
 """			
 		if GPIO.event_detected(sw1):
@@ -87,12 +138,13 @@ class Keyboard(object):
 			print 'sw4'
 """
 
-k = Keyboard()
-while True:
-	k.process_keys()
+#lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
 
-		
-lcd = CharLCD(pin_rs=11, pin_rw=7, pin_e=12, pins_data=[13, 15, 16, 18], cols=16, rows=2)
+MPD.init()
+Keyboard.init()
+while True:
+	Keyboard.process_keys()
+
 
 fb = ['', '']
 fb_pos = [1, 1]
