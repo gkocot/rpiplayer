@@ -223,6 +223,64 @@ class PlayerScreen(Screen):
 			self.time = time.time()
 
 
+class EditScreen(Screen):
+	def __init__(self, label):
+		self.label = label
+
+	def get_text(self, row):
+		if row == 0:
+			return self.label
+		else:
+			return self.data
+
+	def open(self):
+		pass
+	
+	def close(self):
+		pass
+	
+	def key_pressed(self, id):
+		if id == Keyboard.sw1:
+			pass
+		elif id == Keyboard.sw2:
+			pass
+		elif id == Keyboard.sw3:
+			pass
+		elif id == Keyboard.sw4:
+			pass
+	
+	def refresh(self):
+		pass
+
+
+class EditSSIDScreen(EditScreen):
+	def __init__(self, label):
+		#super self.label = 'SSID'
+
+	def open(self):
+		#read SSIOS from file or global configuration class
+		pass
+	
+	def close(self):
+		#write SSID to file or save in global coniiguration class and
+		# or create class Save Screen
+		pass
+	
+	def key_pressed(self, id):
+		if id == Keyboard.sw1:
+			pass
+		elif id == Keyboard.sw2:
+			pass
+		elif id == Keyboard.sw3:
+			pass
+		elif id == Keyboard.sw4:
+			pass
+	
+	def refresh(self):
+		pass
+
+
+
 class DispMgr(object):
 	screen = [
 		PlayerScreen(),
