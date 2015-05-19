@@ -16,6 +16,7 @@ def get_ip_addr():
 class MPD(object):
 	playlists = []
 	current_playlist_no = 0
+	random = False
 
 	@staticmethod
 	def init():
@@ -42,7 +43,6 @@ class MPD(object):
 			subprocess.Popen(['mpc', 'clear']).wait()
 			subprocess.Popen(['mpc', 'load', MPD.playlists[MPD.current_playlist_no]]).wait()
 			subprocess.Popen(['mpc', 'play', '1']).wait()
-			#fb[0] = playlists[current_playlist_no][:15].ljust(15) + ('*' if random else ' ')
 
 	@staticmethod
 	def get_current_playlist_name():
@@ -56,6 +56,10 @@ class MPD(object):
 			current = current.splitlines()[0].decode('windows-1252').encode('ascii', 'ignore')
 		return current
 
+	@staticmethod
+	def toggle_random():
+		subprocess.Popen(['mpc', 'random']).wait()
+		MPD.random = not MPD.random
 
 MPD.init()
 
@@ -137,12 +141,12 @@ class Keyboard(object):
 	@staticmethod
 	def key_pressed(id):
 		#print '{0} key pressed'.format(id)
-		DispMgr.key_pressed(id)
+		ScreenMgr.key_pressed(id)
 
 	@staticmethod
 	def key_hold(id):
 		#print '{0} key held'.format(id)
-		DispMgr.key_hold(id)
+		ScreenMgr.key_hold(id)
 
 
 class LCD(object):
@@ -181,7 +185,7 @@ class Screen(object):
 		pass
 
 
-class StaticScreen(Screen):
+class TextScreen(Screen):
 	def __init__(self, text):
 		self.text = text
 		
@@ -195,7 +199,7 @@ class PlayerScreen(Screen):
 
 	def get_text(self, row):
 		if row == 0:
-			str = MPD.get_current_playlist_name()
+			str = MPD.get_current_playlist_name().ljust(LCD.COLS - 1)[:LCD.COLS - 1] + ('*' if MPD.random else ' ')
 		else:
 			str = MPD.get_current_stream_name()
 
@@ -214,6 +218,8 @@ class PlayerScreen(Screen):
 			LCD.write(1, 0, ' ' * LCD.COLS)
 			GPIO.cleanup()
 			subprocess.Popen(['poweroff']).wait()
+		elif id == Keyboard.sw2:
+			MPD.toggle_random()
 
 	def key_pressed(self, id):
 		if id == Keyboard.sw2:
@@ -231,21 +237,15 @@ class PlayerScreen(Screen):
 			self.time = time.time()
 
 
-class ShowIPScreen(Screen):
+class ShowIPScreen(TextScreen):
 	def __init__(self):
-		self.ip = ''
-
-	def get_text(self, row):
-		if  row == 0:
-			return 'IP Address'
-		elif row == 1:
-			return self.ip
+		super(ShowIPScreen, self).__init__(['IP Address', ''])
 
 	def open(self):
-		self.ip = get_ip_addr()
+		self.text[1] = get_ip_addr()
 
 
-class DispMgr(object):
+class ScreenMgr(object):
 	screen = [
 		PlayerScreen(),
 		ShowIPScreen(),
@@ -255,26 +255,26 @@ class DispMgr(object):
 
 	@staticmethod
 	def refresh():
-		DispMgr.screen[DispMgr.current_screen].refresh()
-		LCD.write(0, 0, DispMgr.screen[DispMgr.current_screen].get_text(0).ljust(LCD.COLS)[:LCD.COLS])
-		LCD.write(1, 0, DispMgr.screen[DispMgr.current_screen].get_text(1).ljust(LCD.COLS)[:LCD.COLS])
+		ScreenMgr.screen[ScreenMgr.current_screen].refresh()
+		LCD.write(0, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(0).ljust(LCD.COLS)[:LCD.COLS])
+		LCD.write(1, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(1).ljust(LCD.COLS)[:LCD.COLS])
 		
 	@staticmethod
 	def key_hold(id):		
 		if id == Keyboard.sw3:
-			DispMgr.screen[DispMgr.current_screen].close()
-			DispMgr.current_screen = (DispMgr.current_screen + 1) % len(DispMgr.screen)
-			DispMgr.screen[DispMgr.current_screen].open()
+			ScreenMgr.screen[ScreenMgr.current_screen].close()
+			ScreenMgr.current_screen = (ScreenMgr.current_screen + 1) % len(ScreenMgr.screen)
+			ScreenMgr.screen[ScreenMgr.current_screen].open()
 		else:
-			DispMgr.screen[DispMgr.current_screen].key_hold(id)
+			ScreenMgr.screen[ScreenMgr.current_screen].key_hold(id)
 			
 	@staticmethod
 	def key_pressed(id):
-		DispMgr.screen[DispMgr.current_screen].key_pressed(id)
+		ScreenMgr.screen[ScreenMgr.current_screen].key_pressed(id)
 
 
 LCD.clear()
 Keyboard.init()
 while True:
 	Keyboard.process_keys()
-	DispMgr.refresh()
+	ScreenMgr.refresh()
