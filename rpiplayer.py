@@ -38,11 +38,22 @@ class MPD(object):
 		subprocess.Popen(['mpc', 'next']).wait()
 
 	@staticmethod
+	def load_playlist():
+		subprocess.Popen(['mpc', 'clear']).wait()
+		subprocess.Popen(['mpc', 'load', MPD.playlists[MPD.current_playlist_no]]).wait()
+		subprocess.Popen(['mpc', 'play', '1']).wait()
+
+	@staticmethod
+	def prev_playlist():
+			if MPD.current_playlist_no == 0:
+				MPD.current_playlist_no = len(MPD.playlists)
+			MPD.current_playlist_no -= 1
+			MPD.load_playlist()
+
+	@staticmethod
 	def next_playlist():
 			MPD.current_playlist_no = (MPD.current_playlist_no + 1) % len(MPD.playlists)
-			subprocess.Popen(['mpc', 'clear']).wait()
-			subprocess.Popen(['mpc', 'load', MPD.playlists[MPD.current_playlist_no]]).wait()
-			subprocess.Popen(['mpc', 'play', '1']).wait()
+			MPD.load_playlist()
 
 	@staticmethod
 	def get_current_playlist_name():
@@ -223,8 +234,10 @@ class PlayerScreen(Screen):
 			MPD.toggle_random()
 
 	def key_pressed(self, id):
-		if id == Keyboard.sw2:
+		if id == Keyboard.sw1:
 			MPD.next_playlist()
+		elif id == Keyboard.sw2:
+			MPD.prev_playlist()
 		elif id == Keyboard.sw3:
 			MPD.prev()
 		elif id == Keyboard.sw4:
