@@ -61,6 +61,7 @@ class MPD(object):
 		subprocess.Popen(['mpc', 'random']).wait()
 		MPD.random = not MPD.random
 
+
 MPD.init()
 
 
@@ -256,8 +257,8 @@ class ScreenMgr(object):
 	@staticmethod
 	def refresh():
 		ScreenMgr.screen[ScreenMgr.current_screen].refresh()
-		LCD.write(0, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(0).ljust(LCD.COLS)[:LCD.COLS])
-		LCD.write(1, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(1).ljust(LCD.COLS)[:LCD.COLS])
+		LCD.write(0, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(0))
+		LCD.write(1, 0, ScreenMgr.screen[ScreenMgr.current_screen].get_text(1))
 		
 	@staticmethod
 	def key_hold(id):		
